@@ -41,6 +41,24 @@ export async function initializeFarcaster(): Promise<boolean> {
   }
 }
 
+export async function shareApp(appUrl: string) {
+  const text = `🎮 Play 2048 on Celo blockchain!\n\nSwipe to merge tiles and reach 2048. Free mode or compete on-chain!\n\nTry it now:`;
+
+  const shareUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(appUrl)}`;
+
+  if (!isFarcasterContext()) {
+    window.open(shareUrl, "_blank");
+    return;
+  }
+
+  try {
+    await sdk.actions.openUrl(shareUrl);
+  } catch (error) {
+    console.error("Failed to open Farcaster share URL:", error);
+    window.open(shareUrl, "_blank");
+  }
+}
+
 export async function share2048Result(
   gamePhase: 'won' | 'lost',
   score: number,

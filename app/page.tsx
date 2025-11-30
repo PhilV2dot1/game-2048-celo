@@ -7,6 +7,7 @@ import { GameStats } from "@/components/GameStats";
 import { ModeToggle } from "@/components/ModeToggle";
 import { WalletConnect } from "@/components/WalletConnect";
 import { FarcasterShare } from "@/components/FarcasterShare";
+import { ShareAppButton } from "@/components/ShareAppButton";
 import { GameMessage } from "@/components/GameMessage";
 
 export default function Home() {
@@ -43,8 +44,9 @@ export default function Home() {
 
         {/* Mode Toggle & Wallet Info */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mb-3">
-          <div className="flex justify-center">
+          <div className="flex justify-center gap-2">
             <ModeToggle mode={mode} onModeChange={switchMode} />
+            <ShareAppButton />
           </div>
 
           {/* Connected Wallet Display */}
