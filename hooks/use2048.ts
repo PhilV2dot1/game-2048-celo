@@ -182,7 +182,7 @@ export function use2048() {
         functionName: 'submitScore',
         args: [BigInt(score), reachedGoal],
         chainId: celo.id,
-        gas: 200_000n,
+        gas: BigInt(200000),
       });
     } catch (error) {
       console.error('Failed to submit score:', error);
