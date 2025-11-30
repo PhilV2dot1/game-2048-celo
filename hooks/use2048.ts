@@ -1,0 +1,305 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
+import { celo } from "wagmi/chains";
+import {
+  Grid,
+  Direction,
+  initializeGame,
+  move,
+  addRandomTile,
+  hasWon,
+  hasValidMoves,
+} from "@/lib/game-logic";
+import { GameStats } from "@/lib/farcaster";
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/lib/contract-abi";
+
+type GamePhase = 'playing' | 'won' | 'lost';
+type GameMode = 'free' | 'onchain';
+
+const STORAGE_KEYS = {
+  FREE_BEST: 'game2048_free_best',
+  FREE_STATS: 'game2048_free_stats',
+};
+
+export function use2048() {
+  // Game state
+  const [mode, setMode] = useState<GameMode>('free');
+  const [gamePhase, setGamePhase] = useState<GamePhase>('playing');
+  const [grid, setGrid] = useState<Grid>(() => initializeGame().grid);
+  const [score, setScore] = useState(0);
+  const [bestScore, setBestScore] = useState(0);
+  const [message, setMessage] = useState('');
+  const [canContinue, setCanContinue] = useState(false);
+
+  // Stats (for display)
+  const [freeStats, setFreeStats] = useState<GameStats>({
+    wins: 0,
+    losses: 0,
+    totalGames: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+  });
+
+  // Wagmi hooks
+  const { address, isConnected } = useAccount();
+  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { data: receipt, isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
+
+  // Read on-chain stats
+  const { data: onchainStats, refetch: refetchStats } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'getStats',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: isConnected && mode === 'onchain' && CONTRACT_ADDRESS !== "0x0000000000000000000000000000000000000000",
+    },
+  });
+
+  // Load best score and stats from localStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const savedBest = localStorage.getItem(STORAGE_KEYS.FREE_BEST);
+    if (savedBest) setBestScore(parseInt(savedBest, 10));
+
+    const savedStats = localStorage.getItem(STORAGE_KEYS.FREE_STATS);
+    if (savedStats) {
+      try {
+        setFreeStats(JSON.parse(savedStats));
+      } catch (e) {
+        console.error('Failed to parse saved stats:', e);
+      }
+    }
+  }, []);
+
+  // Update best score when score changes
+  useEffect(() => {
+    if (score > bestScore) {
+      setBestScore(score);
+      if (mode === 'free' && typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.FREE_BEST, score.toString());
+      }
+    }
+  }, [score, bestScore, mode]);
+
+  // Handle transaction receipt
+  useEffect(() => {
+    if (receipt) {
+      setMessage('✅ Score submitted successfully!');
+      refetchStats();
+
+      setTimeout(() => {
+        setMessage('');
+      }, 3000);
+    }
+  }, [receipt, refetchStats]);
+
+  // Handle move
+  const handleMove = useCallback((direction: Direction) => {
+    if (gamePhase === 'lost' || isPending) return;
+
+    const { newGrid, score: moveScore, moved } = move(grid, direction);
+    if (!moved) return;
+
+    setGrid(newGrid);
+    setScore(prev => prev + moveScore);
+
+    // Add random tile after move
+    const gridWithNew = addRandomTile(newGrid);
+    setGrid(gridWithNew);
+
+    // Check win condition (only if not already won)
+    if (gamePhase !== 'won' && hasWon(gridWithNew)) {
+      setGamePhase('won');
+      setMessage('🎉 You reached 2048!');
+      setCanContinue(true);
+      return;
+    }
+
+    // Check lose condition
+    if (!hasValidMoves(gridWithNew)) {
+      setGamePhase('lost');
+      setMessage('😢 Game Over! No more moves.');
+      updateStatsOnGameEnd(false);
+    }
+  }, [grid, gamePhase, isPending]);
+
+  // Continue playing after winning
+  const continueGame = useCallback(() => {
+    setGamePhase('playing');
+    setMessage('');
+    setCanContinue(false);
+  }, []);
+
+  // Update stats when game ends (free mode only)
+  const updateStatsOnGameEnd = useCallback((won: boolean) => {
+    if (mode !== 'free' || typeof window === 'undefined') return;
+
+    const newStats = { ...freeStats };
+    newStats.totalGames++;
+
+    if (won) {
+      newStats.wins++;
+      newStats.currentStreak = newStats.currentStreak >= 0 ? newStats.currentStreak + 1 : 1;
+    } else {
+      newStats.losses++;
+      newStats.currentStreak = newStats.currentStreak <= 0 ? newStats.currentStreak - 1 : -1;
+    }
+
+    // Update best streak
+    const absStreak = Math.abs(newStats.currentStreak);
+    if (absStreak > newStats.bestStreak) {
+      newStats.bestStreak = absStreak;
+    }
+
+    setFreeStats(newStats);
+    localStorage.setItem(STORAGE_KEYS.FREE_STATS, JSON.stringify(newStats));
+  }, [mode, freeStats]);
+
+  // Submit score on-chain
+  const submitScoreOnChain = useCallback(async () => {
+    if (!isConnected || mode !== 'onchain' || CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
+      setMessage('❌ Cannot submit: Contract not deployed or wallet not connected');
+      return;
+    }
+
+    if (gamePhase === 'playing') {
+      setMessage('❌ Game still in progress');
+      return;
+    }
+
+    const reachedGoal = gamePhase === 'won';
+
+    try {
+      setMessage('⏳ Submitting score on-chain...');
+
+      writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: 'submitScore',
+        args: [BigInt(score), reachedGoal],
+        chainId: celo.id,
+        gas: 200_000n,
+      });
+    } catch (error) {
+      console.error('Failed to submit score:', error);
+      setMessage('❌ Failed to submit score');
+    }
+  }, [isConnected, mode, gamePhase, score, writeContract]);
+
+  // New game
+  const newGame = useCallback(() => {
+    // Save stats if game was finished (not abandoned mid-game)
+    if (gamePhase === 'won' && mode === 'free') {
+      updateStatsOnGameEnd(true);
+    }
+
+    const { grid: newGrid, score: initialScore } = initializeGame();
+    setGrid(newGrid);
+    setScore(initialScore);
+    setGamePhase('playing');
+    setMessage('');
+    setCanContinue(false);
+  }, [gamePhase, mode, updateStatsOnGameEnd]);
+
+  // Switch mode
+  const switchMode = useCallback((newMode: GameMode) => {
+    setMode(newMode);
+    newGame();
+  }, [newGame]);
+
+  // Keyboard input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+
+      e.preventDefault();
+
+      const directionMap: Record<string, Direction> = {
+        ArrowUp: 'up',
+        ArrowDown: 'down',
+        ArrowLeft: 'left',
+        ArrowRight: 'right',
+      };
+
+      handleMove(directionMap[e.key]);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleMove]);
+
+  // Touch input
+  useEffect(() => {
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const deltaX = e.changedTouches[0].clientX - touchStartX;
+      const deltaY = e.changedTouches[0].clientY - touchStartY;
+      const minDistance = 50;
+
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minDistance) {
+        handleMove(deltaX > 0 ? 'right' : 'left');
+      } else if (Math.abs(deltaY) > minDistance) {
+        handleMove(deltaY > 0 ? 'down' : 'up');
+      }
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [handleMove]);
+
+  // Get current stats (free or on-chain)
+  const stats: GameStats = mode === 'onchain' && onchainStats
+    ? {
+        wins: Number(onchainStats[1]),
+        losses: Number(onchainStats[2]),
+        totalGames: Number(onchainStats[3]),
+        currentStreak: Number(onchainStats[5]),
+        bestStreak: Number(onchainStats[6]),
+      }
+    : freeStats;
+
+  // Get high score display
+  const highScore = mode === 'onchain' && onchainStats
+    ? Number(onchainStats[0])
+    : bestScore;
+
+  return {
+    // Game state
+    mode,
+    gamePhase,
+    grid,
+    score,
+    bestScore: highScore,
+    message,
+    stats,
+    canContinue,
+
+    // Wallet state
+    address,
+    isConnected,
+    isPending: isPending || isConfirming,
+
+    // Actions
+    handleMove,
+    newGame,
+    continueGame,
+    submitScoreOnChain,
+    switchMode,
+  };
+}

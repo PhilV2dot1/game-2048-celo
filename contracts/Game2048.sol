@@ -1,0 +1,102 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+/**
+ * @title Game2048
+ * @dev Smart contract for tracking 2048 game scores and statistics on Celo
+ * @notice This contract allows players to submit their game scores and maintains leaderboards
+ */
+contract Game2048 {
+    struct PlayerStats {
+        uint256 highScore;
+        uint256 wins;       // Games reaching 2048
+        uint256 losses;     // Games not reaching 2048
+        uint256 totalGames;
+        int256 currentStreak;
+        uint256 bestStreak;
+        uint256 lastPlayed;
+    }
+
+    mapping(address => PlayerStats) public playerStats;
+
+    event ScoreSubmitted(
+        address indexed player,
+        uint256 score,
+        bool reachedGoal,
+        uint256 timestamp
+    );
+
+    /**
+     * @dev Submit a game score to the blockchain
+     * @param score The final score achieved in the game
+     * @param reachedGoal Whether the player reached the 2048 tile
+     */
+    function submitScore(uint256 score, bool reachedGoal) external {
+        require(score > 0, "Invalid score");
+
+        PlayerStats storage stats = playerStats[msg.sender];
+
+        // Update high score
+        if (score > stats.highScore) {
+            stats.highScore = score;
+        }
+
+        // Update win/loss record
+        if (reachedGoal) {
+            stats.wins++;
+            stats.currentStreak = stats.currentStreak >= 0 ? stats.currentStreak + 1 : int256(1);
+        } else {
+            stats.losses++;
+            stats.currentStreak = stats.currentStreak <= 0 ? stats.currentStreak - 1 : int256(-1);
+        }
+
+        // Update best streak
+        uint256 absStreak = stats.currentStreak >= 0
+            ? uint256(stats.currentStreak)
+            : uint256(-stats.currentStreak);
+        if (absStreak > stats.bestStreak) {
+            stats.bestStreak = absStreak;
+        }
+
+        stats.totalGames++;
+        stats.lastPlayed = block.timestamp;
+
+        emit ScoreSubmitted(msg.sender, score, reachedGoal, block.timestamp);
+    }
+
+    /**
+     * @dev Get player statistics
+     * @param player The address of the player
+     * @return highScore The player's highest score
+     * @return wins Number of wins (games reaching 2048)
+     * @return losses Number of losses
+     * @return totalGames Total games played
+     * @return winRate Win percentage (0-100)
+     * @return currentStreak Current win/loss streak (positive = wins, negative = losses)
+     * @return bestStreak Best streak achieved
+     */
+    function getStats(address player) external view returns (
+        uint256 highScore,
+        uint256 wins,
+        uint256 losses,
+        uint256 totalGames,
+        uint256 winRate,
+        int256 currentStreak,
+        uint256 bestStreak
+    ) {
+        PlayerStats memory stats = playerStats[player];
+        uint256 rate = stats.totalGames > 0
+            ? (stats.wins * 100) / stats.totalGames
+            : 0;
+
+        return (
+            stats.highScore,
+            stats.wins,
+            stats.losses,
+            stats.totalGames,
+            rate,
+            stats.currentStreak,
+            stats.bestStreak
+        );
+    }
+}
