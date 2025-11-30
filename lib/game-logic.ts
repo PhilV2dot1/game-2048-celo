@@ -145,12 +145,12 @@ export function move(grid: Grid, direction: Direction): {
       workingGrid = reverseRows(workingGrid);
       break;
     case 'up':
-      // Rotate clockwise → left → rotate counter-clockwise
-      workingGrid = rotateClockwise(workingGrid);
-      break;
-    case 'down':
       // Rotate counter-clockwise → left → rotate clockwise
       workingGrid = rotateCounterClockwise(workingGrid);
+      break;
+    case 'down':
+      // Rotate clockwise → left → rotate counter-clockwise
+      workingGrid = rotateClockwise(workingGrid);
       break;
   }
 
@@ -167,10 +167,10 @@ export function move(grid: Grid, direction: Direction): {
       workingGrid = reverseRows(mergedGrid);
       break;
     case 'up':
-      workingGrid = rotateCounterClockwise(mergedGrid);
+      workingGrid = rotateClockwise(mergedGrid);
       break;
     case 'down':
-      workingGrid = rotateClockwise(mergedGrid);
+      workingGrid = rotateCounterClockwise(mergedGrid);
       break;
   }
 
