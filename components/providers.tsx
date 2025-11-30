@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/farcaster-init"; // Call ready() immediately
 import { useState, useEffect, ReactNode, createContext, useContext } from "react";
 import { WagmiProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -51,19 +52,18 @@ export function Providers({ children }: { children: ReactNode }) {
       // ALWAYS initialize Farcaster SDK (it calls ready() to dismiss splash)
       try {
         const success = await initializeFarcaster();
+        setIsSDKLoaded(true); // Set loaded immediately after ready() is called
         if (!success && inFC) {
           console.warn("Farcaster SDK initialization returned false");
           setInitError("SDK initialization failed");
         }
       } catch (error) {
         console.error("SDK initialization error:", error);
+        setIsSDKLoaded(true); // Still set as loaded to allow app to function
         if (inFC) {
           setInitError(error instanceof Error ? error.message : "Unknown error");
         }
       }
-
-      // Always set as loaded to allow app to function
-      setIsSDKLoaded(true);
     };
     load();
   }, []);
