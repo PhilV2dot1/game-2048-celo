@@ -8,20 +8,24 @@ interface GameControlsProps {
   onNewGame: () => void;
   onContinue?: () => void;
   onSubmitScore?: () => void;
+  onPlayOnChain?: () => void;
   gamePhase: GamePhase;
   mode: 'free' | 'onchain';
   disabled: boolean;
   canContinue?: boolean;
+  isConnected?: boolean;
 }
 
 export function GameControls({
   onNewGame,
   onContinue,
   onSubmitScore,
+  onPlayOnChain,
   gamePhase,
   mode,
   disabled,
   canContinue,
+  isConnected,
 }: GameControlsProps) {
   return (
     <div className="mt-4 flex flex-col gap-3">
@@ -37,15 +41,29 @@ export function GameControls({
         </motion.button>
       )}
 
-      {/* New Game Button */}
-      <motion.button
-        whileTap={{ scale: 0.95 }}
-        onClick={onNewGame}
-        disabled={disabled}
-        className="bg-gradient-to-r from-celo-yellow to-yellow-400 text-gray-900 font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all"
-      >
-        {gamePhase === 'playing' ? 'NEW GAME' : 'PLAY AGAIN'}
-      </motion.button>
+      {/* Start On-Chain Game Button (on-chain mode, connected, at start) */}
+      {mode === 'onchain' && isConnected && onPlayOnChain && gamePhase === 'playing' && (
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={onPlayOnChain}
+          disabled={disabled}
+          className="bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all"
+        >
+          {disabled ? 'STARTING...' : '🎲 START ON-CHAIN GAME (0.01 CELO)'}
+        </motion.button>
+      )}
+
+      {/* New Game Button (free mode or after game ends) */}
+      {(mode === 'free' || gamePhase !== 'playing') && (
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={onNewGame}
+          disabled={disabled}
+          className="bg-gradient-to-r from-celo-yellow to-yellow-400 text-gray-900 font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all"
+        >
+          {gamePhase === 'playing' ? 'NEW GAME' : 'PLAY AGAIN'}
+        </motion.button>
+      )}
 
       {/* Submit Score (on-chain mode, game over) */}
       {mode === 'onchain' && gamePhase !== 'playing' && onSubmitScore && (
