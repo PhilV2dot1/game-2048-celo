@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, useSwitchChain } from "wagmi";
 import { celo } from "wagmi/chains";
 import {
   Grid,
@@ -43,9 +43,10 @@ export function use2048() {
   });
 
   // Wagmi hooks
-  const { address, isConnected } = useAccount();
-  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { address, isConnected, chain } = useAccount();
+  const { writeContract, data: hash, isPending, reset: resetWrite } = useWriteContract();
   const { data: receipt, isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
+  const { switchChain } = useSwitchChain();
 
   // Read on-chain stats
   const { data: onchainStats, refetch: refetchStats } = useReadContract({
@@ -114,7 +115,10 @@ export function use2048() {
     // Check win condition (only if not already won)
     if (gamePhase !== 'won' && hasWon(gridWithNew)) {
       setGamePhase('won');
-      setMessage('🎉 You reached 2048!');
+      const msg = mode === 'onchain'
+        ? '🎉 You reached 2048! Submit your score on-chain!'
+        : '🎉 You reached 2048!';
+      setMessage(msg);
       setCanContinue(true);
       return;
     }
@@ -122,10 +126,13 @@ export function use2048() {
     // Check lose condition
     if (!hasValidMoves(gridWithNew)) {
       setGamePhase('lost');
-      setMessage('😢 Game Over! No more moves.');
+      const msg = mode === 'onchain'
+        ? '😢 Game Over! You can still submit your score.'
+        : '😢 Game Over! No more moves.';
+      setMessage(msg);
       updateStatsOnGameEnd(false);
     }
-  }, [grid, gamePhase, isPending]);
+  }, [grid, gamePhase, isPending, mode, updateStatsOnGameEnd]);
 
   // Continue playing after winning
   const continueGame = useCallback(() => {
@@ -161,20 +168,48 @@ export function use2048() {
 
   // Submit score on-chain
   const submitScoreOnChain = useCallback(async () => {
-    if (!isConnected || mode !== 'onchain' || CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
-      setMessage('❌ Cannot submit: Contract not deployed or wallet not connected');
+    if (!isConnected) {
+      setMessage('❌ Please connect your wallet first');
+      return;
+    }
+
+    if (!address) {
+      setMessage('❌ Wallet address not found');
+      return;
+    }
+
+    if (mode !== 'onchain') {
+      setMessage('❌ Switch to On-Chain mode first');
       return;
     }
 
     if (gamePhase === 'playing') {
-      setMessage('❌ Game still in progress');
+      setMessage('❌ Finish the game first');
       return;
     }
 
     const reachedGoal = gamePhase === 'won';
 
     try {
+      // Reset previous transaction state
+      resetWrite?.();
+
+      // Check if we're on the correct chain (Celo)
+      if (chain?.id !== celo.id) {
+        setMessage('⚡ Switching to Celo network...');
+        try {
+          await switchChain?.({ chainId: celo.id });
+          // Give wallet time to switch
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (switchError) {
+          console.error('Chain switch error:', switchError);
+          setMessage('❌ Please switch to Celo network in your wallet');
+          return;
+        }
+      }
+
       setMessage('⏳ Submitting score on-chain...');
+      console.log('📤 Submitting score:', score, 'Won:', reachedGoal);
 
       writeContract({
         address: CONTRACT_ADDRESS,
@@ -185,10 +220,10 @@ export function use2048() {
         gas: BigInt(200000),
       });
     } catch (error) {
-      console.error('Failed to submit score:', error);
-      setMessage('❌ Failed to submit score');
+      console.error('❌ Failed to submit score:', error);
+      setMessage('❌ Failed to submit score - Please try again');
     }
-  }, [isConnected, mode, gamePhase, score, writeContract]);
+  }, [isConnected, address, mode, gamePhase, score, chain, switchChain, writeContract, resetWrite]);
 
   // New game
   const newGame = useCallback(() => {
@@ -208,6 +243,10 @@ export function use2048() {
   // Switch mode
   const switchMode = useCallback((newMode: GameMode) => {
     setMode(newMode);
+    if (newMode === 'onchain') {
+      setMessage('🎮 On-Chain Mode: Play and submit your score to the blockchain!');
+      setTimeout(() => setMessage(''), 3000);
+    }
     newGame();
   }, [newGame]);
 
