@@ -32,6 +32,7 @@ export function use2048() {
   const [bestScore, setBestScore] = useState(0);
   const [message, setMessage] = useState('');
   const [canContinue, setCanContinue] = useState(false);
+  const [hasActiveOnChainGame, setHasActiveOnChainGame] = useState(false);
 
   // Stats (for display)
   const [freeStats, setFreeStats] = useState<GameStats>({
@@ -89,14 +90,53 @@ export function use2048() {
   // Handle transaction receipt
   useEffect(() => {
     if (receipt) {
-      setMessage('✅ Score submitted successfully!');
-      refetchStats();
+      // Check if this was a game start or score submission
+      if (hasActiveOnChainGame && gamePhase !== 'playing') {
+        // This was a score submission
+        setMessage('✅ Score submitted successfully!');
+        setHasActiveOnChainGame(false);
+        refetchStats();
+      } else {
+        // This was a game start
+        setMessage('✅ Game started! Play now.');
+        setHasActiveOnChainGame(true);
+        setGamePhase('playing');
+        const { grid: newGrid } = initializeGame();
+        setGrid(newGrid);
+        setScore(0);
+        setCanContinue(false);
+      }
 
       setTimeout(() => {
         setMessage('');
       }, 3000);
     }
-  }, [receipt, refetchStats]);
+  }, [receipt, refetchStats, hasActiveOnChainGame, gamePhase]);
+
+  // Update stats when game ends (free mode only) - Defined first to avoid hoisting issues
+  const updateStatsOnGameEnd = useCallback((won: boolean) => {
+    if (mode !== 'free' || typeof window === 'undefined') return;
+
+    const newStats = { ...freeStats };
+    newStats.totalGames++;
+
+    if (won) {
+      newStats.wins++;
+      newStats.currentStreak = newStats.currentStreak >= 0 ? newStats.currentStreak + 1 : 1;
+    } else {
+      newStats.losses++;
+      newStats.currentStreak = newStats.currentStreak <= 0 ? newStats.currentStreak - 1 : -1;
+    }
+
+    // Update best streak
+    const absStreak = Math.abs(newStats.currentStreak);
+    if (absStreak > newStats.bestStreak) {
+      newStats.bestStreak = absStreak;
+    }
+
+    setFreeStats(newStats);
+    localStorage.setItem(STORAGE_KEYS.FREE_STATS, JSON.stringify(newStats));
+  }, [mode, freeStats]);
 
   // Handle move
   const handleMove = useCallback((direction: Direction) => {
@@ -140,31 +180,6 @@ export function use2048() {
     setMessage('');
     setCanContinue(false);
   }, []);
-
-  // Update stats when game ends (free mode only)
-  const updateStatsOnGameEnd = useCallback((won: boolean) => {
-    if (mode !== 'free' || typeof window === 'undefined') return;
-
-    const newStats = { ...freeStats };
-    newStats.totalGames++;
-
-    if (won) {
-      newStats.wins++;
-      newStats.currentStreak = newStats.currentStreak >= 0 ? newStats.currentStreak + 1 : 1;
-    } else {
-      newStats.losses++;
-      newStats.currentStreak = newStats.currentStreak <= 0 ? newStats.currentStreak - 1 : -1;
-    }
-
-    // Update best streak
-    const absStreak = Math.abs(newStats.currentStreak);
-    if (absStreak > newStats.bestStreak) {
-      newStats.bestStreak = absStreak;
-    }
-
-    setFreeStats(newStats);
-    localStorage.setItem(STORAGE_KEYS.FREE_STATS, JSON.stringify(newStats));
-  }, [mode, freeStats]);
 
   // Submit score on-chain
   const submitScoreOnChain = useCallback(async () => {
@@ -302,6 +317,57 @@ export function use2048() {
     };
   }, [handleMove]);
 
+  // Play on-chain with improved reliability
+  const playOnChain = useCallback(async () => {
+    if (!isConnected) {
+      setMessage('❌ Please connect your wallet first');
+      return;
+    }
+
+    if (!address) {
+      setMessage('❌ Wallet address not found');
+      return;
+    }
+
+    try {
+      // Reset previous transaction state
+      resetWrite?.();
+
+      // Check if we're on the correct chain (Celo)
+      if (chain?.id !== celo.id) {
+        setMessage('⚡ Switching to Celo...');
+        try {
+          await switchChain?.({ chainId: celo.id });
+          // Give wallet time to switch
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (switchError) {
+          console.error('Chain switch error:', switchError);
+          setMessage('❌ Please switch to Celo network in your wallet');
+          return;
+        }
+      }
+
+      // Show immediate feedback
+      setMessage('🎲 Starting your on-chain game...');
+
+      console.log('📤 Sending startGame transaction...');
+
+      // Send transaction with game fee (0.01 CELO)
+      writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: 'startGame',
+        chainId: celo.id,
+        gas: BigInt(200000),
+        value: BigInt("10000000000000000"), // 0.01 CELO in wei
+      });
+
+    } catch (error) {
+      console.error('❌ Transaction error:', error);
+      setMessage('❌ Transaction failed - Please try again');
+    }
+  }, [isConnected, address, chain, switchChain, writeContract, resetWrite]);
+
   // Get current stats (free or on-chain)
   const stats: GameStats = mode === 'onchain' && onchainStats
     ? {
@@ -339,6 +405,7 @@ export function use2048() {
     newGame,
     continueGame,
     submitScoreOnChain,
+    playOnChain,
     switchMode,
   };
 }
