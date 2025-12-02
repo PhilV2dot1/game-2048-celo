@@ -1,7 +1,7 @@
 // Game2048V2 Smart Contract ABI
-// Update CONTRACT_ADDRESS after deploying the V2 contract
+// Deployed and verified on Celo Mainnet
 
-export const CONTRACT_ADDRESS = "0x617f5d75643FCDDf06A6b84401721CC214aB6723" as `0x${string}`;
+export const CONTRACT_ADDRESS = "0xB8562b198Af496DE6f1222d35810cA54984263AA" as `0x${string}`;
 
 export const CONTRACT_ABI = [
   {
