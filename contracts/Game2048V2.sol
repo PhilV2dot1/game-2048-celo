@@ -27,7 +27,6 @@ contract Game2048V2 {
     mapping(address => PlayerStats) public playerStats;
     mapping(address => ActiveGame) public activeGames;
 
-    address public owner;
     uint256 public totalFeesCollected;
 
     event GameStarted(address indexed player, uint256 timestamp);
@@ -37,10 +36,6 @@ contract Game2048V2 {
         bool reachedGoal,
         uint256 timestamp
     );
-
-    constructor() {
-        owner = msg.sender;
-    }
 
     /**
      * @dev Start a new on-chain game by paying the fee
@@ -146,17 +141,5 @@ contract Game2048V2 {
     function hasActiveGame(address player) external view returns (bool exists, uint256 startTime) {
         ActiveGame memory game = activeGames[player];
         return (game.exists, game.startTime);
-    }
-
-    /**
-     * @dev Owner can withdraw accumulated fees
-     */
-    function withdraw() external {
-        require(msg.sender == owner, "Only owner can withdraw");
-        uint256 balance = address(this).balance;
-        require(balance > 0, "No funds to withdraw");
-
-        (bool success, ) = owner.call{value: balance}("");
-        require(success, "Withdrawal failed");
     }
 }
