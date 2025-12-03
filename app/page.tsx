@@ -32,14 +32,11 @@ export default function Home() {
   return (
     <div className="min-h-screen p-2 sm:p-6 bg-gradient-to-br from-gray-100 via-gray-50 to-yellow-50/20">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
+        {/* Header - Compact for mobile */}
         <header className="mb-2 sm:mb-4">
-          <h1 className="text-3xl sm:text-5xl font-bold text-center text-gray-900 mb-1">
+          <h1 className="text-2xl sm:text-5xl font-bold text-center text-gray-900">
             2048 on Celo
           </h1>
-          <p className="text-center text-gray-600 text-sm sm:text-base">
-            Swipe to merge tiles and reach 2048!
-          </p>
         </header>
 
         {/* Mode Toggle & Wallet Info */}
@@ -66,15 +63,15 @@ export default function Home() {
           </div>
         )}
 
-        {/* Score Display */}
-        <div className="flex gap-3 mb-3 justify-center">
-          <div className="bg-white/90 px-6 py-3 rounded-xl border-2 border-gray-300 shadow-md">
+        {/* Score Display - Compact for mobile */}
+        <div className="flex gap-2 sm:gap-3 mb-3 justify-center">
+          <div className="bg-white/90 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 border-gray-300 shadow-md">
             <div className="text-xs text-gray-600 text-center font-semibold">SCORE</div>
-            <div className="text-2xl sm:text-3xl font-bold text-center text-gray-900">{score}</div>
+            <div className="text-xl sm:text-3xl font-bold text-center text-gray-900">{score}</div>
           </div>
-          <div className="bg-gradient-to-r from-celo-yellow/30 to-yellow-300/30 px-6 py-3 rounded-xl border-2 border-celo-yellow shadow-md">
+          <div className="bg-gradient-to-r from-celo-yellow/30 to-yellow-300/30 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 border-celo-yellow shadow-md">
             <div className="text-xs text-gray-700 text-center font-semibold">BEST</div>
-            <div className="text-2xl sm:text-3xl font-bold text-center text-gray-900">{bestScore}</div>
+            <div className="text-xl sm:text-3xl font-bold text-center text-gray-900">{bestScore}</div>
           </div>
         </div>
 
@@ -118,10 +115,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* Footer */}
-        <footer className="text-center text-gray-500 text-xs mt-4 sm:mt-8 pb-4">
-          <p className="hidden sm:block">
-            Built with ❤️ on{" "}
+        {/* Footer - Hidden on mobile for cleaner Farcaster UI */}
+        <footer className="text-center text-gray-500 text-xs mt-4 sm:mt-8 pb-4 hidden sm:block">
+          <p>
+            Built on{" "}
             <a
               href="https://celo.org"
               target="_blank"

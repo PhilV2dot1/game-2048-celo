@@ -28,14 +28,14 @@ export function GameControls({
   isConnected,
 }: GameControlsProps) {
   return (
-    <div className="mt-4 flex flex-col gap-3">
+    <div className="mt-3 sm:mt-4 flex flex-col gap-2 sm:gap-3">
       {/* Continue Button (after winning) */}
       {canContinue && onContinue && (
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={onContinue}
           disabled={disabled}
-          className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all"
+          className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all text-sm sm:text-base"
         >
           CONTINUE PLAYING
         </motion.button>
@@ -47,9 +47,9 @@ export function GameControls({
           whileTap={{ scale: 0.95 }}
           onClick={onPlayOnChain}
           disabled={disabled}
-          className="bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all"
+          className="bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all text-sm sm:text-base"
         >
-          {disabled ? 'STARTING...' : '🎲 START ON-CHAIN GAME (0.01 CELO)'}
+          {disabled ? 'STARTING...' : '🎲 START GAME (0.01 CELO)'}
         </motion.button>
       )}
 
@@ -59,7 +59,7 @@ export function GameControls({
           whileTap={{ scale: 0.95 }}
           onClick={onNewGame}
           disabled={disabled}
-          className="bg-gradient-to-r from-celo-yellow to-yellow-400 text-gray-900 font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all"
+          className="bg-gradient-to-r from-celo-yellow to-yellow-400 text-gray-900 font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all text-sm sm:text-base"
         >
           {gamePhase === 'playing' ? 'NEW GAME' : 'PLAY AGAIN'}
         </motion.button>
@@ -71,17 +71,17 @@ export function GameControls({
           whileTap={{ scale: 0.95 }}
           onClick={onSubmitScore}
           disabled={disabled}
-          className="bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all"
+          className="bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all text-sm sm:text-base"
         >
-          {disabled ? 'SUBMITTING...' : 'SUBMIT SCORE ON-CHAIN'}
+          {disabled ? 'SUBMITTING...' : 'SUBMIT SCORE'}
         </motion.button>
       )}
 
-      {/* Mobile hint */}
+      {/* Mobile hint - More subtle */}
       {gamePhase === 'playing' && (
-        <p className="text-center text-gray-600 text-sm sm:text-base mt-2">
-          <span className="sm:hidden">Swipe to move tiles</span>
-          <span className="hidden sm:inline">Use arrow keys to move tiles</span>
+        <p className="text-center text-gray-500 text-xs sm:text-sm mt-1">
+          <span className="sm:hidden">Swipe to move</span>
+          <span className="hidden sm:inline">Use arrow keys to move</span>
         </p>
       )}
     </div>

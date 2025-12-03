@@ -145,12 +145,10 @@ export function use2048() {
     const { newGrid, score: moveScore, moved } = move(grid, direction);
     if (!moved) return;
 
-    setGrid(newGrid);
-    setScore(prev => prev + moveScore);
-
     // Add random tile after move
     const gridWithNew = addRandomTile(newGrid);
     setGrid(gridWithNew);
+    setScore(prev => prev + moveScore);
 
     // Check win condition (only if not already won)
     if (gamePhase !== 'won' && hasWon(gridWithNew)) {
