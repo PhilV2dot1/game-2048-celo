@@ -27,9 +27,13 @@ export function Tile({ value, row, col }: TileProps) {
 
   return (
     <motion.div
-      key={`${row}-${col}-${value}`}
-      initial={{ scale: value > 0 ? 0.8 : 1, opacity: value > 0 ? 0 : 1 }}
-      animate={{ scale: 1, opacity: 1 }}
+      key={`${row}-${col}`}
+      animate={{
+        scale: 1,
+        opacity: 1,
+        backgroundColor: bgColor,
+      }}
+      initial={false}
       transition={{
         type: "spring",
         stiffness: 300,
