@@ -22,11 +22,13 @@ export default function Home() {
     isPending,
     isConnected,
     address,
+    hasActiveOnChainGame,
     newGame,
     continueGame,
     submitScoreOnChain,
     playOnChain,
     switchMode,
+    abandonGame,
   } = use2048();
 
   return (
@@ -94,11 +96,13 @@ export default function Home() {
               onContinue={canContinue ? continueGame : undefined}
               onSubmitScore={mode === 'onchain' ? submitScoreOnChain : undefined}
               onPlayOnChain={mode === 'onchain' ? playOnChain : undefined}
+              onAbandonGame={mode === 'onchain' ? abandonGame : undefined}
               gamePhase={gamePhase}
               mode={mode}
               disabled={isPending}
               canContinue={canContinue}
               isConnected={isConnected}
+              hasActiveOnChainGame={hasActiveOnChainGame}
             />
           </div>
 

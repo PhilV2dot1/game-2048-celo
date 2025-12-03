@@ -32,7 +32,6 @@ export function use2048() {
   const [bestScore, setBestScore] = useState(0);
   const [message, setMessage] = useState('');
   const [canContinue, setCanContinue] = useState(false);
-  const [hasActiveOnChainGame, setHasActiveOnChainGame] = useState(false);
 
   // Stats (for display)
   const [freeStats, setFreeStats] = useState<GameStats>({
@@ -54,6 +53,17 @@ export function use2048() {
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'getStats',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: isConnected && mode === 'onchain' && CONTRACT_ADDRESS !== "0x0000000000000000000000000000000000000000",
+    },
+  });
+
+  // Check if user has an active on-chain game
+  const { data: activeGameData, refetch: refetchActiveGame } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'hasActiveGame',
     args: address ? [address] : undefined,
     query: {
       enabled: isConnected && mode === 'onchain' && CONTRACT_ADDRESS !== "0x0000000000000000000000000000000000000000",
@@ -87,31 +97,31 @@ export function use2048() {
     }
   }, [score, bestScore, mode]);
 
+  // Check if user has an active on-chain game (compute early)
+  const hasActiveOnChainGame = activeGameData ? activeGameData[0] : false;
+
   // Handle transaction receipt
   useEffect(() => {
     if (receipt) {
-      // Check if this was a game start or score submission
-      if (hasActiveOnChainGame && gamePhase !== 'playing') {
-        // This was a score submission
-        setMessage('✅ Score submitted successfully!');
-        setHasActiveOnChainGame(false);
-        refetchStats();
-      } else {
-        // This was a game start
-        setMessage('✅ Game started! Play now.');
-        setHasActiveOnChainGame(true);
-        setGamePhase('playing');
-        const { grid: newGrid } = initializeGame();
-        setGrid(newGrid);
-        setScore(0);
-        setCanContinue(false);
-      }
+      // Refetch active game state after any transaction
+      refetchActiveGame();
+      refetchStats();
+
+      // Show success message
+      setMessage('✅ Transaction completed successfully!');
+
+      // Reset game state after transaction
+      setGamePhase('playing');
+      const { grid: newGrid } = initializeGame();
+      setGrid(newGrid);
+      setScore(0);
+      setCanContinue(false);
 
       setTimeout(() => {
         setMessage('');
       }, 3000);
     }
-  }, [receipt, refetchStats, hasActiveOnChainGame, gamePhase]);
+  }, [receipt, refetchStats, refetchActiveGame]);
 
   // Update stats when game ends (free mode only) - Defined first to avoid hoisting issues
   const updateStatsOnGameEnd = useCallback((won: boolean) => {
@@ -315,6 +325,59 @@ export function use2048() {
     };
   }, [handleMove]);
 
+  // Abandon current on-chain game
+  const abandonGame = useCallback(async () => {
+    if (!isConnected) {
+      setMessage('❌ Please connect your wallet first');
+      return;
+    }
+
+    if (!address) {
+      setMessage('❌ Wallet address not found');
+      return;
+    }
+
+    if (mode !== 'onchain') {
+      setMessage('❌ Only for On-Chain mode');
+      return;
+    }
+
+    try {
+      // Reset previous transaction state
+      resetWrite?.();
+
+      // Check if we're on the correct chain (Celo)
+      if (chain?.id !== celo.id) {
+        setMessage('⚡ Switching to Celo network...');
+        try {
+          await switchChain?.({ chainId: celo.id });
+          // Give wallet time to switch
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (switchError) {
+          console.error('Chain switch error:', switchError);
+          setMessage('❌ Please switch to Celo network in your wallet');
+          return;
+        }
+      }
+
+      setMessage('⏳ Abandoning game on-chain...');
+      console.log('📤 Submitting score 0 to reset game state');
+
+      // Submit score of 0 to reset the game state
+      writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: 'submitScore',
+        args: [BigInt(0), false],
+        chainId: celo.id,
+        gas: BigInt(200000),
+      });
+    } catch (error) {
+      console.error('❌ Failed to abandon game:', error);
+      setMessage('❌ Failed to abandon game - Please try again');
+    }
+  }, [isConnected, address, mode, chain, switchChain, writeContract, resetWrite]);
+
   // Play on-chain with improved reliability
   const playOnChain = useCallback(async () => {
     if (!isConnected) {
@@ -392,6 +455,7 @@ export function use2048() {
     message,
     stats,
     canContinue,
+    hasActiveOnChainGame,
 
     // Wallet state
     address,
@@ -405,5 +469,7 @@ export function use2048() {
     submitScoreOnChain,
     playOnChain,
     switchMode,
+    abandonGame,
+    refetchActiveGame,
   };
 }
