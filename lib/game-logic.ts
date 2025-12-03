@@ -45,30 +45,25 @@ export function initializeGame(): { grid: Grid; score: number } {
   return { grid, score: 0 };
 }
 
-// Merge a single line (row or column) to the left
-function mergeLine(line: TileValue[]): { newLine: TileValue[]; score: number } {
-  // 1. Remove zeros: [2, 0, 2, 4] → [2, 2, 4]
+// Merge a single line to the left
+function mergeLineLeft(line: TileValue[]): { newLine: TileValue[]; score: number } {
   const nonZero = line.filter(val => val !== 0);
-
-  // 2. Merge pairs: [2, 2, 4] → [4, 4]
   const merged: TileValue[] = [];
   let score = 0;
   let i = 0;
 
   while (i < nonZero.length) {
     if (i + 1 < nonZero.length && nonZero[i] === nonZero[i + 1]) {
-      // Merge tiles
       const mergedValue = (nonZero[i] * 2) as TileValue;
       merged.push(mergedValue);
       score += mergedValue;
-      i += 2; // Skip both merged tiles
+      i += 2;
     } else {
       merged.push(nonZero[i]);
       i += 1;
     }
   }
 
-  // 3. Pad with zeros: [4, 4] → [4, 4, 0, 0]
   while (merged.length < GRID_SIZE) {
     merged.push(0);
   }
@@ -76,44 +71,30 @@ function mergeLine(line: TileValue[]): { newLine: TileValue[]; score: number } {
   return { newLine: merged, score };
 }
 
-// Rotate grid 90 degrees clockwise
-function rotateClockwise(grid: Grid): Grid {
-  const n = GRID_SIZE;
-  const rotated = createEmptyGrid();
-  for (let row = 0; row < n; row++) {
-    for (let col = 0; col < n; col++) {
-      rotated[col][n - 1 - row] = grid[row][col];
+// Merge a single line to the right
+function mergeLineRight(line: TileValue[]): { newLine: TileValue[]; score: number } {
+  const nonZero = line.filter(val => val !== 0);
+  const merged: TileValue[] = [];
+  let score = 0;
+  let i = nonZero.length - 1;
+
+  while (i >= 0) {
+    if (i - 1 >= 0 && nonZero[i] === nonZero[i - 1]) {
+      const mergedValue = (nonZero[i] * 2) as TileValue;
+      merged.unshift(mergedValue);
+      score += mergedValue;
+      i -= 2;
+    } else {
+      merged.unshift(nonZero[i]);
+      i -= 1;
     }
   }
-  return rotated;
-}
 
-// Rotate grid 90 degrees counter-clockwise
-function rotateCounterClockwise(grid: Grid): Grid {
-  const n = GRID_SIZE;
-  const rotated = createEmptyGrid();
-  for (let row = 0; row < n; row++) {
-    for (let col = 0; col < n; col++) {
-      rotated[n - 1 - col][row] = grid[row][col];
-    }
+  while (merged.length < GRID_SIZE) {
+    merged.unshift(0);
   }
-  return rotated;
-}
 
-// Reverse each row horizontally
-function reverseRows(grid: Grid): Grid {
-  return grid.map(row => [...row].reverse());
-}
-
-// Move all tiles left
-function moveLeft(grid: Grid): { newGrid: Grid; score: number } {
-  let totalScore = 0;
-  const newGrid = grid.map(row => {
-    const { newLine, score } = mergeLine(row);
-    totalScore += score;
-    return newLine;
-  });
-  return { newGrid, score: totalScore };
+  return { newLine: merged, score };
 }
 
 // Check if two grids are equal
@@ -126,58 +107,63 @@ function gridsEqual(grid1: Grid, grid2: Grid): boolean {
   return true;
 }
 
-// Execute move in any direction
+// Execute move in any direction - direct implementation (no rotation)
 export function move(grid: Grid, direction: Direction): {
   newGrid: Grid;
   score: number;
   moved: boolean;
 } {
-  let workingGrid = grid.map(r => [...r]);
-  let score = 0;
+  const newGrid: Grid = createEmptyGrid();
+  let totalScore = 0;
 
-  // Transform grid so we can always use "left" logic
   switch (direction) {
     case 'left':
-      // No transformation needed
+      // Move each row to the left
+      for (let row = 0; row < GRID_SIZE; row++) {
+        const { newLine, score } = mergeLineLeft(grid[row]);
+        newGrid[row] = newLine;
+        totalScore += score;
+      }
       break;
-    case 'right':
-      // Reverse → left → reverse
-      workingGrid = reverseRows(workingGrid);
-      break;
-    case 'up':
-      // Rotate counter-clockwise → left → rotate clockwise
-      workingGrid = rotateCounterClockwise(workingGrid);
-      break;
-    case 'down':
-      // Rotate clockwise → left → rotate counter-clockwise
-      workingGrid = rotateClockwise(workingGrid);
-      break;
-  }
 
-  // Perform left merge
-  const { newGrid: mergedGrid, score: moveScore } = moveLeft(workingGrid);
-  score = moveScore;
-
-  // Transform back
-  switch (direction) {
-    case 'left':
-      workingGrid = mergedGrid;
-      break;
     case 'right':
-      workingGrid = reverseRows(mergedGrid);
+      // Move each row to the right
+      for (let row = 0; row < GRID_SIZE; row++) {
+        const { newLine, score } = mergeLineRight(grid[row]);
+        newGrid[row] = newLine;
+        totalScore += score;
+      }
       break;
+
     case 'up':
-      workingGrid = rotateClockwise(mergedGrid);
+      // Move each column upward
+      for (let col = 0; col < GRID_SIZE; col++) {
+        const column = [grid[0][col], grid[1][col], grid[2][col], grid[3][col]];
+        const { newLine, score } = mergeLineLeft(column);
+        for (let row = 0; row < GRID_SIZE; row++) {
+          newGrid[row][col] = newLine[row];
+        }
+        totalScore += score;
+      }
       break;
+
     case 'down':
-      workingGrid = rotateCounterClockwise(mergedGrid);
+      // Move each column downward
+      for (let col = 0; col < GRID_SIZE; col++) {
+        const column = [grid[0][col], grid[1][col], grid[2][col], grid[3][col]];
+        const { newLine, score } = mergeLineRight(column);
+        for (let row = 0; row < GRID_SIZE; row++) {
+          newGrid[row][col] = newLine[row];
+        }
+        totalScore += score;
+      }
       break;
   }
 
   // Check if anything moved
-  const moved = !gridsEqual(grid, workingGrid);
+  const moved = !gridsEqual(grid, newGrid);
 
-  return { newGrid: workingGrid, score, moved };
+  return { newGrid, score: totalScore, moved };
 }
 
 // Check if 2048 tile exists
