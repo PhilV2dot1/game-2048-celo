@@ -45,48 +45,32 @@ const iconSVG = `
 </svg>
 `;
 
-// SVG for OG image (1200x800)
+// SVG for OG image (1200x800) - matching Blackjack style
 const ogImageSVG = `
 <svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
-  <!-- Gradient background - Modern gaming style -->
+  <!-- Gradient background - Light cream/yellow like Blackjack -->
   <defs>
     <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1e1b4b;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#312e81;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#4c1d95;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="glowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#FCFF52;stop-opacity:0.3" />
-      <stop offset="100%" style="stop-color:#facc15;stop-opacity:0.1" />
+      <stop offset="0%" style="stop-color:#fefce8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fef3c7;stop-opacity:1" />
     </linearGradient>
   </defs>
 
   <!-- Background -->
   <rect width="1200" height="800" fill="url(#bgGradient)"/>
 
-  <!-- Ambient glow -->
-  <ellipse cx="300" cy="400" rx="400" ry="300" fill="url(#glowGradient)" opacity="0.4"/>
-  <ellipse cx="900" cy="400" rx="350" ry="250" fill="url(#glowGradient)" opacity="0.3"/>
+  <!-- Icon card on the left - white rounded square with yellow border -->
+  <rect x="100" y="200" width="280" height="280" rx="40" fill="white" stroke="#FCFF52" stroke-width="8"/>
 
-  <!-- Game board container with glow effect -->
-  <defs>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
+  <!-- Yellow sparkle at top -->
+  <text x="240" y="250" font-size="32" text-anchor="middle" fill="#FCFF52">✦</text>
 
-  <!-- Icon on the left with shadow -->
-  <rect x="100" y="260" width="280" height="280" rx="40" fill="rgba(255,255,255,0.95)" stroke="#FCFF52" stroke-width="8" filter="url(#glow)"/>
-  <text x="240" y="310" font-size="32" text-anchor="middle" fill="#FCFF52">✦</text>
+  <!-- 2048 tiles inside the card -->
+  <!-- Tile 1: "2" (beige) -->
+  <rect x="140" y="290" width="80" height="80" rx="8" fill="#eee4da"/>
+  <text x="180" y="345" font-size="48" font-weight="bold" text-anchor="middle" fill="#776e65">2</text>
 
-  <!-- Tiles inside icon -->
-  <rect x="140" y="350" width="80" height="80" rx="8" fill="#eee4da"/>
-  <text x="180" y="405" font-size="48" font-weight="bold" text-anchor="middle" fill="#776e65">2</text>
-
+  <!-- Tile 2: "2048" (Celo yellow gradient) -->
   <defs>
     <linearGradient id="tile2048og" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#FCFF52;stop-opacity:1" />
@@ -94,30 +78,21 @@ const ogImageSVG = `
       <stop offset="100%" style="stop-color:#facc15;stop-opacity:1" />
     </linearGradient>
   </defs>
-  <rect x="260" y="350" width="80" height="80" rx="8" fill="url(#tile2048og)"/>
-  <text x="300" y="380" font-size="20" font-weight="bold" text-anchor="middle" fill="#1a1a1a">20</text>
-  <text x="300" y="405" font-size="20" font-weight="bold" text-anchor="middle" fill="#1a1a1a">48</text>
+  <rect x="260" y="290" width="80" height="80" rx="8" fill="url(#tile2048og)"/>
+  <text x="300" y="320" font-size="20" font-weight="bold" text-anchor="middle" fill="#1a1a1a">20</text>
+  <text x="300" y="345" font-size="20" font-weight="bold" text-anchor="middle" fill="#1a1a1a">48</text>
 
   <!-- Text on the right -->
-  <!-- Title with gradient -->
-  <defs>
-    <linearGradient id="titleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#FCFF52;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  <text x="500" y="340" font-size="96" font-weight="bold" fill="url(#titleGradient)" font-family="Arial, sans-serif">2048 on Celo</text>
+  <!-- Main title - black like Blackjack -->
+  <text x="500" y="280" font-size="96" font-weight="bold" fill="#1a1a1a" font-family="Arial, sans-serif">2048 on Celo</text>
 
-  <!-- Subtitle -->
-  <text x="500" y="420" font-size="48" fill="#e5e7eb" font-family="Arial, sans-serif">Play on Celo blockchain</text>
+  <!-- Subtitle - gray like Blackjack -->
+  <text x="500" y="360" font-size="48" fill="#6b7280" font-family="Arial, sans-serif">Play on Celo blockchain</text>
 
-  <!-- Yellow underline with glow -->
-  <rect x="500" y="435" width="310" height="6" fill="#FCFF52" opacity="0.8" filter="url(#glow)"/>
-
-  <!-- Features -->
-  <text x="500" y="510" font-size="36" fill="#d1d5db" font-family="Arial, sans-serif">✓ Free or On-Chain mode</text>
-  <text x="500" y="570" font-size="36" fill="#d1d5db" font-family="Arial, sans-serif">✓ Track your stats</text>
-  <text x="500" y="630" font-size="36" fill="#d1d5db" font-family="Arial, sans-serif">✓ Powered by Farcaster</text>
+  <!-- Features with checkmarks - gray like Blackjack -->
+  <text x="500" y="450" font-size="36" fill="#6b7280" font-family="Arial, sans-serif">✓ Free or On-Chain mode</text>
+  <text x="500" y="510" font-size="36" fill="#6b7280" font-family="Arial, sans-serif">✓ Track your stats</text>
+  <text x="500" y="570" font-size="36" fill="#6b7280" font-family="Arial, sans-serif">✓ Powered by Farcaster</text>
 </svg>
 `;
 
