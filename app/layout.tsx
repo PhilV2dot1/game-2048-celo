@@ -46,6 +46,10 @@ export const metadata: Metadata = {
     description: "Play 2048 on-chain with Farcaster!",
     images: [`${baseUrl}/og-image.png`],
   },
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
   other: {
     // Farcaster Frame tags
     "fc:frame": "vNext",
