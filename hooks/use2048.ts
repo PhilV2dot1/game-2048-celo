@@ -32,6 +32,7 @@ export function use2048() {
   const [bestScore, setBestScore] = useState(0);
   const [message, setMessage] = useState('');
   const [canContinue, setCanContinue] = useState(false);
+  const [lastTransactionType, setLastTransactionType] = useState<'startGame' | 'submitScore' | null>(null);
 
   // Stats (for display)
   const [freeStats, setFreeStats] = useState<GameStats>({
@@ -56,6 +57,8 @@ export function use2048() {
     args: address ? [address] : undefined,
     query: {
       enabled: isConnected && mode === 'onchain' && CONTRACT_ADDRESS !== "0x0000000000000000000000000000000000000000",
+      gcTime: 0, // Don't cache - always fetch fresh data
+      staleTime: 0, // Consider data immediately stale
     },
   });
 
@@ -67,6 +70,8 @@ export function use2048() {
     args: address ? [address] : undefined,
     query: {
       enabled: isConnected && mode === 'onchain' && CONTRACT_ADDRESS !== "0x0000000000000000000000000000000000000000",
+      gcTime: 0, // Don't cache
+      staleTime: 0,
     },
   });
 
@@ -97,12 +102,57 @@ export function use2048() {
     }
   }, [score, bestScore, mode]);
 
+  // Refetch active game state when wallet connects or address changes
+  useEffect(() => {
+    if (isConnected && address && mode === 'onchain') {
+      console.log('🔄 Wallet connected, refetching active game state...');
+
+      // Immediate refetch
+      refetchActiveGame();
+      refetchStats();
+
+      // Second refetch after 500ms
+      const timer1 = setTimeout(() => {
+        console.log('🔄 Second refetch...');
+        refetchActiveGame();
+        refetchStats();
+      }, 500);
+
+      // Third refetch after 1.5s to ensure we have correct state
+      const timer2 = setTimeout(() => {
+        console.log('🔄 Final refetch...');
+        refetchActiveGame();
+        refetchStats();
+      }, 1500);
+
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
+    }
+  }, [isConnected, address, mode, refetchActiveGame, refetchStats]);
+
   // Check if user has an active on-chain game (compute early)
   const hasActiveOnChainGame = activeGameData ? activeGameData[0] : false;
 
   // Handle transaction receipt
   useEffect(() => {
     if (receipt) {
+      console.log('✅ Transaction receipt received:', receipt.transactionHash);
+      console.log('Transaction type:', lastTransactionType);
+
+      // Only process if we have a transaction type (avoid double processing)
+      if (!lastTransactionType) {
+        console.log('⏭️ Skipping - already processed');
+        return;
+      }
+
+      // Capture transaction type before clearing it
+      const txType = lastTransactionType;
+
+      // Clear the transaction type immediately to prevent double processing
+      setLastTransactionType(null);
+
       // Refetch active game state after any transaction
       refetchActiveGame();
       refetchStats();
@@ -110,18 +160,26 @@ export function use2048() {
       // Show success message
       setMessage('✅ Transaction completed successfully!');
 
-      // Reset game state after transaction
-      setGamePhase('playing');
-      const { grid: newGrid } = initializeGame();
-      setGrid(newGrid);
-      setScore(0);
-      setCanContinue(false);
+      // Only reset game after submitScore (abandon or real score)
+      // Don't reset after startGame - user needs to play!
+      if (txType === 'submitScore') {
+        setTimeout(() => {
+          console.log('🎮 Resetting game state after score submission');
+          setGamePhase('playing');
+          const { grid: newGrid } = initializeGame();
+          setGrid(newGrid);
+          setScore(0);
+          setCanContinue(false);
+        }, 2500);
+      } else if (txType === 'startGame') {
+        console.log('✅ Game started - ready to play!');
+      }
 
       setTimeout(() => {
         setMessage('');
       }, 3000);
     }
-  }, [receipt, refetchStats, refetchActiveGame]);
+  }, [receipt, refetchStats, refetchActiveGame, lastTransactionType]);
 
   // Update stats when game ends (free mode only) - Defined first to avoid hoisting issues
   const updateStatsOnGameEnd = useCallback((won: boolean) => {
@@ -234,6 +292,9 @@ export function use2048() {
       setMessage('⏳ Submitting score on-chain...');
       console.log('📤 Submitting score:', score, 'Won:', reachedGoal);
 
+      // Mark this as a submitScore transaction
+      setLastTransactionType('submitScore');
+
       writeContract({
         address: CONTRACT_ADDRESS,
         abi: CONTRACT_ABI,
@@ -244,9 +305,29 @@ export function use2048() {
       });
     } catch (error) {
       console.error('❌ Failed to submit score:', error);
-      setMessage('❌ Failed to submit score - Please try again');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Detect state mismatch errors
+      if (errorMessage.toLowerCase().includes('simulation') ||
+          errorMessage.toLowerCase().includes('no active game') ||
+          errorMessage.toLowerCase().includes('invalid')) {
+        console.error('❌ State mismatch detected! Forcing refetch...');
+        setMessage('🔄 Syncing game state...');
+
+        // Force immediate refetch to correct the state
+        refetchActiveGame();
+        refetchStats();
+
+        setTimeout(() => {
+          refetchActiveGame();
+          refetchStats();
+          setMessage('');
+        }, 1000);
+      } else {
+        setMessage('❌ Failed to submit score - Please try again');
+      }
     }
-  }, [isConnected, address, mode, gamePhase, score, chain, switchChain, writeContract, resetWrite]);
+  }, [isConnected, address, mode, gamePhase, score, chain, switchChain, writeContract, resetWrite, refetchActiveGame, refetchStats]);
 
   // New game
   const newGame = useCallback(() => {
@@ -363,6 +444,9 @@ export function use2048() {
       setMessage('⏳ Abandoning game on-chain...');
       console.log('📤 Submitting score 0 to reset game state');
 
+      // Mark this as a submitScore transaction (abandon counts as submit)
+      setLastTransactionType('submitScore');
+
       // Submit score of 0 to reset the game state
       writeContract({
         address: CONTRACT_ADDRESS,
@@ -374,9 +458,29 @@ export function use2048() {
       });
     } catch (error) {
       console.error('❌ Failed to abandon game:', error);
-      setMessage('❌ Failed to abandon game - Please try again');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Detect state mismatch errors
+      if (errorMessage.toLowerCase().includes('simulation') ||
+          errorMessage.toLowerCase().includes('no active game') ||
+          errorMessage.toLowerCase().includes('invalid')) {
+        console.error('❌ State mismatch detected! Forcing refetch...');
+        setMessage('🔄 Syncing game state...');
+
+        // Force immediate refetch to correct the state
+        refetchActiveGame();
+        refetchStats();
+
+        setTimeout(() => {
+          refetchActiveGame();
+          refetchStats();
+          setMessage('');
+        }, 1000);
+      } else {
+        setMessage('❌ Failed to abandon game - Please try again');
+      }
     }
-  }, [isConnected, address, mode, chain, switchChain, writeContract, resetWrite]);
+  }, [isConnected, address, mode, chain, switchChain, writeContract, resetWrite, refetchActiveGame, refetchStats]);
 
   // Play on-chain with improved reliability
   const playOnChain = useCallback(async () => {
@@ -412,6 +516,9 @@ export function use2048() {
       setMessage('🎲 Starting your on-chain game...');
 
       console.log('📤 Sending startGame transaction...');
+
+      // Mark this as a startGame transaction
+      setLastTransactionType('startGame');
 
       // Send transaction with game fee (0.01 CELO)
       writeContract({
