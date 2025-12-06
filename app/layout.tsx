@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   openGraph: {
     title: "2048 on Celo",
-    description: "Play 2048 on-chain with Farcaster!",
+    description: "Slide tiles and reach 2048! Play free or compete on-chain.",
     url: baseUrl,
     siteName: "2048 on Celo",
     type: "website",
