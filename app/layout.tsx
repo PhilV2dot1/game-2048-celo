@@ -2,9 +2,26 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
-const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://game-2048-celo.vercel.app';
+// Auto-detect production URL or use environment variable
+const getBaseUrl = () => {
+  // Priority 1: Explicit environment variable
+  if (process.env.NEXT_PUBLIC_URL) {
+    return process.env.NEXT_PUBLIC_URL;
+  }
+
+  // Priority 2: Vercel automatic URL (only in production)
+  if (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  // Priority 3: Localhost fallback
+  return 'http://localhost:3000';
+};
+
+const baseUrl = getBaseUrl();
 
 export const metadata: Metadata = {
+  metadataBase: new URL(baseUrl),
   title: "2048 on Celo",
   description: "Play 2048 on-chain! Free mode or compete on Celo blockchain.",
   manifest: "/manifest.json",
