@@ -23,7 +23,7 @@ const baseUrl = getBaseUrl();
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: "2048 on Celo",
-  description: "Play 2048 on-chain! Free mode or compete on Celo blockchain.",
+  description: "Slide tiles to reach 2048! Play free or compete on Celo blockchain.",
   manifest: "/manifest.json",
   openGraph: {
     title: "2048 on Celo",
