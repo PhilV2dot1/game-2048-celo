@@ -23,6 +23,13 @@ export const CONTRACT_ABI = [
   },
   {
     type: "function",
+    name: "abandonGame",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable"
+  },
+  {
+    type: "function",
     name: "getStats",
     inputs: [{ name: "player", type: "address" }],
     outputs: [
@@ -68,6 +75,14 @@ export const CONTRACT_ABI = [
       { name: "player", type: "address", indexed: true },
       { name: "score", type: "uint256", indexed: false },
       { name: "reachedGoal", type: "bool", indexed: false },
+      { name: "timestamp", type: "uint256", indexed: false }
+    ]
+  },
+  {
+    type: "event",
+    name: "GameAbandoned",
+    inputs: [
+      { name: "player", type: "address", indexed: true },
       { name: "timestamp", type: "uint256", indexed: false }
     ]
   }

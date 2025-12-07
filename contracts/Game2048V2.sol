@@ -36,6 +36,7 @@ contract Game2048V2 {
         bool reachedGoal,
         uint256 timestamp
     );
+    event GameAbandoned(address indexed player, uint256 timestamp);
 
     /**
      * @dev Start a new on-chain game by paying the fee
@@ -94,6 +95,30 @@ contract Game2048V2 {
         stats.lastPlayed = block.timestamp;
 
         emit ScoreSubmitted(msg.sender, score, reachedGoal, block.timestamp);
+    }
+
+    /**
+     * @dev Abandon the current active game
+     * @notice This will count as a loss but allows starting a new game
+     */
+    function abandonGame() external {
+        // If no active game, silently return (no revert)
+        if (!activeGames[msg.sender].exists) {
+            return;
+        }
+
+        // Clear active game
+        delete activeGames[msg.sender];
+
+        PlayerStats storage stats = playerStats[msg.sender];
+
+        // Count as a loss
+        stats.losses++;
+        stats.totalGames++;
+        stats.currentStreak = stats.currentStreak <= 0 ? stats.currentStreak - 1 : int256(-1);
+        stats.lastPlayed = block.timestamp;
+
+        emit GameAbandoned(msg.sender, block.timestamp);
     }
 
     /**

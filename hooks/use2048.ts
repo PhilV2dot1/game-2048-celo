@@ -442,17 +442,16 @@ export function use2048() {
       }
 
       setMessage('⏳ Abandoning game on-chain...');
-      console.log('📤 Submitting score 0 to reset game state');
+      console.log('📤 Calling abandonGame function');
 
       // Mark this as a submitScore transaction (abandon counts as submit)
       setLastTransactionType('submitScore');
 
-      // Submit score of 0 to reset the game state
+      // Call the dedicated abandonGame function
       writeContract({
         address: CONTRACT_ADDRESS,
         abi: CONTRACT_ABI,
-        functionName: 'submitScore',
-        args: [BigInt(0), false],
+        functionName: 'abandonGame',
         chainId: celo.id,
         gas: BigInt(200000),
       });
